@@ -31,8 +31,11 @@ def send_lark_msg(chat_id, text):
 def get_gold_price():
     try:
         url = "http://hq.sinajs.cn/list=sge_au9999"
-        headers = {"Referer": "https://finance.sina.com.cn"}
-        response = requests.get(url, headers=headers)
+        headers = {
+            "Referer": "https://finance.sina.com.cn",
+            "User-Agent": "Mozilla/5.0 Windows NT 10.0; Win64; x64 AppleWebKit/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=5)
         data = response.text.split(",")
         if len(data) > 3:
             return float(data[2])
@@ -60,18 +63,18 @@ def lark_event():
 
         reply_msg = ""
         if "买入" in text:
-            match = re.search(r'\d+(\.\d+)?', text)
+            match = re.search(r'买入\s*(\d+(?:\.\d+)?)', text)
             if match:
-                STATE["buy"] = float(match.group())
-                reply_msg = f"✅ 设置成功！当前买入提醒价: {STATE['buy']}"
+                STATE["buy"] = float(match.group(1))
+                reply_msg = f"✅ 设置成功 当前买入提醒价 {STATE['buy']}"
         elif "卖出" in text:
-            match = re.search(r'\d+(\.\d+)?', text)
+            match = re.search(r'卖出\s*(\d+(?:\.\d+)?)', text)
             if match:
-                STATE["sell"] = float(match.group())
-                reply_msg = f"✅ 设置成功！当前卖出提醒价: {STATE['sell']}"
+                STATE["sell"] = float(match.group(1))
+                reply_msg = f"✅ 设置成功 当前卖出提醒价 {STATE['sell']}"
         elif "查询" in text:
-            reply_msg = f"📊 当前监控设置：\n买入提醒价: {STATE['buy']}\n卖出提醒价: {STATE['sell']}"
-
+            reply_msg = f"📊 当前监控设置\n买入提醒价 {STATE['buy']}\n卖出提醒价 {STATE['sell']}"
+            
         if reply_msg:
             send_lark_msg(chat_id, reply_msg)
 
@@ -99,4 +102,5 @@ def check_price():
     return f"Checked. Price: {current_price}", 200
 
 if __name__ == '__main__':
+
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
