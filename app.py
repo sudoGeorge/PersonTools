@@ -3,7 +3,7 @@ import json
 import re
 import requests
 from flask import Flask, request, jsonify
-
+import yfinance as yf
 app = Flask(__name__)
 
 STATE = {
@@ -29,13 +29,16 @@ def send_lark_msg(chat_id, text):
 
 def get_gold_price():
     try:
-        headers = {"User-Agent": "Mozilla/5.0 Windows NT 10.0 Win64 x64"}
+        gold_ticker = yf.Ticker("XAU=X")
+        gold_data = gold_ticker.history(period="1d")
+        if gold_data.empty:
+            gold_ticker = yf.Ticker("GC=F")
+            gold_data = gold_ticker.history(period="1d")
+        gold_usd_oz = float(gold_data['Close'].iloc[-1])
         
-        res_gold = requests.get("https://query1.finance.yahoo.com/v8/finance/chart/XAU=X", headers=headers, timeout=10)
-        gold_usd_oz = res_gold.json()['chart']['result'][0]['meta']['regularMarketPrice']
-        
-        res_cny = requests.get("https://query1.finance.yahoo.com/v8/finance/chart/CNY=X", headers=headers, timeout=10)
-        usd_cny = res_cny.json()['chart']['result'][0]['meta']['regularMarketPrice']
+        cny_ticker = yf.Ticker("CNY=X")
+        cny_data = cny_ticker.history(period="1d")
+        usd_cny = float(cny_data['Close'].iloc[-1])
         
         gold_rmb_gram = gold_usd_oz * usd_cny / 31.1034768
         return round(gold_rmb_gram, 2)
@@ -100,3 +103,4 @@ def check_price():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
