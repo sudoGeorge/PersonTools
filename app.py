@@ -37,16 +37,13 @@ def get_gold_price():
     try:
         headers = {"User-Agent": "Mozilla/5.0 Windows NT 10.0 Win64 x64 AppleWebKit/537.36"}
         
-        gold_url = "https://api.allorigins.win/get?url=https://data-asg.goldprice.org/dbXRates/USD"
+        # 切换为 CodeTabs 代理引擎，直接返回原始数据
+        gold_url = "https://api.codetabs.com/v1/proxy?quest=https://data-asg.goldprice.org/dbXRates/USD"
         gold_res = requests.get(gold_url, headers=headers, timeout=15)
         if gold_res.status_code != 200:
             return f"代理接口请求失败 状态码 {gold_res.status_code}"
             
-        proxy_data = gold_res.json()
-        if "contents" not in proxy_data:
-            return "代理未返回有效内容"
-            
-        gold_data = json.loads(proxy_data["contents"])
+        gold_data = gold_res.json()
         gold_usd_oz = float(gold_data['items'][0]['xauPrice'])
         
         rate_url = "https://api.exchangerate-api.com/v4/latest/USD"
