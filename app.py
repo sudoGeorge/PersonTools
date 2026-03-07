@@ -29,15 +29,14 @@ def send_lark_msg(chat_id, text):
 
 def get_gold_price():
     try:
-        url = "http://hq.sinajs.cn/list=sge_au9999"
+        url = "http://qt.gtimg.cn/q=sge_au9999"
         headers = {
-            "Referer": "https://finance.sina.com.cn",
             "User-Agent": "Mozilla/5.0 Windows NT 10.0 Win64 x64 AppleWebKit/537.36"
         }
-        response = requests.get(url, headers=headers, timeout=5)
-        data = response.text.split(",")
+        response = requests.get(url, headers=headers, timeout=2)
+        data = response.text.split("~")
         if len(data) > 3:
-            return float(data[2])
+            return float(data[3])
     except Exception:
         pass
     return None
