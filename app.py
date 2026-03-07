@@ -37,7 +37,6 @@ def get_gold_price():
     try:
         headers = {"User-Agent": "Mozilla/5.0 Windows NT 10.0 Win64 x64 AppleWebKit/537.36"}
         
-        # 切换为 CodeTabs 代理引擎，直接返回原始数据
         gold_url = "https://api.codetabs.com/v1/proxy?quest=https://data-asg.goldprice.org/dbXRates/USD"
         gold_res = requests.get(gold_url, headers=headers, timeout=15)
         if gold_res.status_code != 200:
@@ -97,23 +96,3 @@ def lark_event():
     return jsonify({"msg": "ok"})
 
 @app.route('/check_price', methods=['GET'])
-def check_price():
-    current_price = get_gold_price()
-    if not isinstance(current_price, float):
-        return f"Keep alive active Error detail {current_price}", 200
-
-    msg = ""
-    if STATE["buy"] > 0 and current_price <= STATE["buy"]:
-        msg = f"买入提醒\n当前金价 {current_price} 已降至目标价 {STATE['buy']} 及其以下"
-        STATE["buy"] = 0.0
-    elif STATE["sell"] < 9999.0 and current_price >= STATE["sell"]:
-        msg = f"卖出提醒\n当前金价 {current_price} 已涨至目标价 {STATE['sell']} 及其以上"
-        STATE["sell"] = 9999.0 
-
-    if msg and STATE["chat_id"]:
-        send_lark_msg(STATE["chat_id"], msg)
-
-    return f"Checked Price {current_price}", 200
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
