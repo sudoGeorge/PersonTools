@@ -28,24 +28,24 @@ def send_lark_msg(chat_id, text):
     payload = {"receive_id": chat_id, "msg_type": "text", "content": json.dumps({"text": text})}
     requests.post(url, headers=headers, json=payload)
 
-def get_gold_price():
-    try:
-        gold_ticker = yf.Ticker("XAU=X")
-        gold_data = gold_ticker.history(period="5d")
-        if gold_data.empty:
-            return "XAU国际金价节点返回空数据"
-        gold_usd_oz = float(gold_data['Close'].iloc[-1])
-        
-        cny_ticker = yf.Ticker("CNY=X")
-        cny_data = cny_ticker.history(period="5d")
-        if cny_data.empty:
-            return "CNY实时汇率节点返回空数据"
-        usd_cny = float(cny_data['Close'].iloc[-1])
-        
-        gold_rmb_gram = gold_usd_oz * usd_cny / 31.1034768
-        return round(gold_rmb_gram, 2)
-    except Exception as e:
-        return f"引擎底层报错 {str(e)}"
+@app.route('/check_price', methods=['GET'])
+def check_price():
+    current_price = get_gold_price()
+    if not isinstance(current_price, float):
+        return f"Keep alive active. Error detail {current_price}", 200
+
+    msg = ""
+    if STATE["buy"] > 0 and current_price <= STATE["buy"]:
+        msg = f"买入提醒\n当前金价 {current_price} 已降至目标价 {STATE['buy']} 及其以下"
+        STATE["buy"] = 0.0
+    elif STATE["sell"] < 9999.0 and current_price >= STATE["sell"]:
+        msg = f"卖出提醒\n当前金价 {current_price} 已涨至目标价 {STATE['sell']} 及其以上"
+        STATE["sell"] = 9999.0 
+
+    if msg and STATE["chat_id"]:
+        send_lark_msg(STATE["chat_id"], msg)
+
+    return f"Checked Price {current_price}", 200
 
 @app.route('/lark_webhook', methods=['POST'])
 def lark_event():
@@ -106,3 +106,4 @@ def check_price():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
