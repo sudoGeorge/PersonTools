@@ -4,6 +4,7 @@ import re
 import requests
 from flask import Flask, request, jsonify
 import yfinance as yf
+
 app = Flask(__name__)
 
 STATE = {
@@ -30,21 +31,21 @@ def send_lark_msg(chat_id, text):
 def get_gold_price():
     try:
         gold_ticker = yf.Ticker("XAU=X")
-        gold_data = gold_ticker.history(period="1d")
+        gold_data = gold_ticker.history(period="5d")
         if gold_data.empty:
-            gold_ticker = yf.Ticker("GC=F")
-            gold_data = gold_ticker.history(period="1d")
+            return "XAU国际金价节点返回空数据"
         gold_usd_oz = float(gold_data['Close'].iloc[-1])
         
         cny_ticker = yf.Ticker("CNY=X")
-        cny_data = cny_ticker.history(period="1d")
+        cny_data = cny_ticker.history(period="5d")
+        if cny_data.empty:
+            return "CNY实时汇率节点返回空数据"
         usd_cny = float(cny_data['Close'].iloc[-1])
         
         gold_rmb_gram = gold_usd_oz * usd_cny / 31.1034768
         return round(gold_rmb_gram, 2)
-    except Exception:
-        pass
-    return None
+    except Exception as e:
+        return f"引擎底层报错 {str(e)}"
 
 @app.route('/lark_webhook', methods=['POST'])
 def lark_event():
@@ -74,8 +75,10 @@ def lark_event():
                 reply_msg = f"设置成功 当前卖出提醒价 {STATE['sell']}"
         elif "查询" in text:
             current_price = get_gold_price()
-            price_display = current_price if current_price else "获取失败"
-            reply_msg = f"当前监控状态\n当前实时金价 {price_display}\n买入提醒设置 {STATE['buy']}\n卖出提醒设置 {STATE['sell']}"
+            if isinstance(current_price, float):
+                reply_msg = f"当前监控状态\n当前实时金价 {current_price}\n买入提醒设置 {STATE['buy']}\n卖出提醒设置 {STATE['sell']}"
+            else:
+                reply_msg = f"数据获取异常\n错误详情 {current_price}\n买入提醒设置 {STATE['buy']}\n卖出提醒设置 {STATE['sell']}"
 
         if reply_msg:
             send_lark_msg(chat_id, reply_msg)
@@ -85,8 +88,8 @@ def lark_event():
 @app.route('/check_price', methods=['GET'])
 def check_price():
     current_price = get_gold_price()
-    if not current_price:
-        return "Fail", 500
+    if not isinstance(current_price, float):
+        return f"Fail {current_price}", 500
 
     msg = ""
     if STATE["buy"] > 0 and current_price <= STATE["buy"]:
@@ -103,4 +106,3 @@ def check_price():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
