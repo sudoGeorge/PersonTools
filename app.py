@@ -29,14 +29,16 @@ def send_lark_msg(chat_id, text):
 
 def get_gold_price():
     try:
-        url = "http://qt.gtimg.cn/q=sge_au9999"
+        url = "https://api.allorigins.win/get?url=http://hq.sinajs.cn/list=sge_au9999"
         headers = {
             "User-Agent": "Mozilla/5.0 Windows NT 10.0 Win64 x64 AppleWebKit/537.36"
         }
-        response = requests.get(url, headers=headers, timeout=2)
-        data = response.text.split("~")
-        if len(data) > 3:
-            return float(data[3])
+        response = requests.get(url, headers=headers, timeout=10)
+        data_json = response.json()
+        if "contents" in data_json:
+            data = data_json["contents"].split(",")
+            if len(data) > 3:
+                return float(data[2])
     except Exception:
         pass
     return None
@@ -98,3 +100,4 @@ def check_price():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+
