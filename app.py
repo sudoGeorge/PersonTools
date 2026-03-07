@@ -96,3 +96,22 @@ def lark_event():
     return jsonify({"msg": "ok"})
 
 @app.route('/check_price', methods=['GET'])
+def check_price():
+    current_price = get_gold_price()
+    if not isinstance(current_price, float):
+        return f"Keep alive active Error detail {current_price}", 200
+
+    msg = ""
+    if STATE["buy"] > 0 and current_price <= STATE["buy"]:
+        msg += f"买入提醒\n当前金价 {current_price} 已达到或低于目标价 {STATE['buy']}\n"
+        
+    if STATE["sell"] < 9999.0 and current_price >= STATE["sell"]:
+        msg += f"卖出提醒\n当前金价 {current_price} 已达到或高于目标价 {STATE['sell']}\n"
+
+    if msg and STATE["chat_id"]:
+        send_lark_msg(STATE["chat_id"], msg.strip())
+
+    return f"Checked Price {current_price}", 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
