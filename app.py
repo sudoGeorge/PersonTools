@@ -3,7 +3,6 @@ import json
 import re
 import requests
 from flask import Flask, request, jsonify
-import yfinance as yf
 
 app = Flask(__name__)
 
@@ -36,17 +35,21 @@ def send_lark_msg(chat_id, text):
 
 def get_gold_price():
     try:
-        gold_ticker = yf.Ticker("XAU=X")
-        gold_data = gold_ticker.history(period="5d")
-        if gold_data.empty:
-            return "XAU国际金价节点返回空数据"
-        gold_usd_oz = float(gold_data['Close'].iloc[-1])
+        headers = {"User-Agent": "Mozilla/5.0 Windows NT 10.0 Win64 x64 AppleWebKit/537.36"}
         
-        cny_ticker = yf.Ticker("CNY=X")
-        cny_data = cny_ticker.history(period="5d")
-        if cny_data.empty:
-            return "CNY实时汇率节点返回空数据"
-        usd_cny = float(cny_data['Close'].iloc[-1])
+        gold_url = "https://data-asg.goldprice.org/dbXRates/USD"
+        gold_res = requests.get(gold_url, headers=headers, timeout=10)
+        if gold_res.status_code != 200:
+            return f"黄金接口请求失败 状态码 {gold_res.status_code}"
+        gold_data = gold_res.json()
+        gold_usd_oz = float(gold_data['items'][0]['xauPrice'])
+        
+        rate_url = "https://api.exchangerate-api.com/v4/latest/USD"
+        rate_res = requests.get(rate_url, timeout=10)
+        if rate_res.status_code != 200:
+            return f"汇率接口请求失败 状态码 {rate_res.status_code}"
+        rate_data = rate_res.json()
+        usd_cny = float(rate_data['rates']['CNY'])
         
         gold_rmb_gram = gold_usd_oz * usd_cny / 31.1034768
         return round(gold_rmb_gram, 2)
