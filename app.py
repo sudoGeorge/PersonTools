@@ -1,8 +1,8 @@
-from flask import Flask, request, jsonify
-import requests
-import json
 import os
+import json
 import re
+import requests
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
@@ -29,16 +29,16 @@ def send_lark_msg(chat_id, text):
 
 def get_gold_price():
     try:
-        url = "https://api.allorigins.win/get?url=http://hq.sinajs.cn/list=sge_au9999"
-        headers = {
-            "User-Agent": "Mozilla/5.0 Windows NT 10.0 Win64 x64 AppleWebKit/537.36"
-        }
-        response = requests.get(url, headers=headers, timeout=10)
-        data_json = response.json()
-        if "contents" in data_json:
-            data = data_json["contents"].split(",")
-            if len(data) > 3:
-                return float(data[2])
+        headers = {"User-Agent": "Mozilla/5.0 Windows NT 10.0 Win64 x64"}
+        
+        res_gold = requests.get("https://query1.finance.yahoo.com/v8/finance/chart/XAU=X", headers=headers, timeout=10)
+        gold_usd_oz = res_gold.json()['chart']['result'][0]['meta']['regularMarketPrice']
+        
+        res_cny = requests.get("https://query1.finance.yahoo.com/v8/finance/chart/CNY=X", headers=headers, timeout=10)
+        usd_cny = res_cny.json()['chart']['result'][0]['meta']['regularMarketPrice']
+        
+        gold_rmb_gram = gold_usd_oz * usd_cny / 31.1034768
+        return round(gold_rmb_gram, 2)
     except Exception:
         pass
     return None
@@ -63,16 +63,16 @@ def lark_event():
             match = re.search(r'买入\s*(\d+(?:\.\d+)?)', text)
             if match:
                 STATE["buy"] = float(match.group(1))
-                reply_msg = f"✅ 设置成功 当前买入提醒价 {STATE['buy']}"
+                reply_msg = f"设置成功 当前买入提醒价 {STATE['buy']}"
         elif "卖出" in text:
             match = re.search(r'卖出\s*(\d+(?:\.\d+)?)', text)
             if match:
                 STATE["sell"] = float(match.group(1))
-                reply_msg = f"✅ 设置成功 当前卖出提醒价 {STATE['sell']}"
+                reply_msg = f"设置成功 当前卖出提醒价 {STATE['sell']}"
         elif "查询" in text:
             current_price = get_gold_price()
             price_display = current_price if current_price else "获取失败"
-            reply_msg = f"📊 当前监控状态\n当前实时金价 {price_display}\n买入提醒设置 {STATE['buy']}\n卖出提醒设置 {STATE['sell']}"
+            reply_msg = f"当前监控状态\n当前实时金价 {price_display}\n买入提醒设置 {STATE['buy']}\n卖出提醒设置 {STATE['sell']}"
 
         if reply_msg:
             send_lark_msg(chat_id, reply_msg)
@@ -87,17 +87,16 @@ def check_price():
 
     msg = ""
     if STATE["buy"] > 0 and current_price <= STATE["buy"]:
-        msg = f"🚨 【买入提醒】\n当前金价 {current_price} 已降至目标价 {STATE['buy']} 及其以下"
+        msg = f"买入提醒\n当前金价 {current_price} 已降至目标价 {STATE['buy']} 及其以下"
         STATE["buy"] = 0.0
     elif STATE["sell"] < 9999.0 and current_price >= STATE["sell"]:
-        msg = f"🚨 【卖出提醒】\n当前金价 {current_price} 已涨至目标价 {STATE['sell']} 及其以上"
+        msg = f"卖出提醒\n当前金价 {current_price} 已涨至目标价 {STATE['sell']} 及其以上"
         STATE["sell"] = 9999.0 
 
     if msg and STATE["chat_id"]:
         send_lark_msg(STATE["chat_id"], msg)
 
-    return f"Checked. Price {current_price}", 200
+    return f"Checked Price {current_price}", 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
